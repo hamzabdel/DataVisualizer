@@ -12,7 +12,7 @@ def on_exit():
     root.destroy()
     exit()
 
-def handle_drop(event):
+def handle_drop(event): # planning to implement drag and drop functionality on .csv files!
     filepath = event.data.strip()
     process_file(filepath)
 
@@ -78,26 +78,34 @@ def analyze_data():
     try:
         numeric_data = file_data.select_dtypes(include='number')
         stats = numeric_data.describe()
+
+        formatted_stats = stats.to_string(justify="center", float_format="{:.2f}".format)
         print("Summary Statistics: ")
         print(stats)
 
         result_window = Toplevel(root)
         result_window.title("Statistical Analysis Results")
-        result_window.geometry("400x300")
+        result_window.geometry("500x400")
 
-        result_label = tk.Label(result_window, text="Descriptive Statistics:", font=("Arial", 14))
+        result_label = tk.Label(result_window, text="Descriptive Statistics:", font=("Arial", 16, "bold"))
         result_label.pack(pady=10)
 
-        result_text = tk.Text(result_window, wrap=tk.WORD, height=15, width=50, font=("Arial", 14))
-        result_text.insert(tk.END, str(stats))
-        result_text.pack(pady=10)
-        result_text.config(state=tk.DISABLED, tabs=20)
+        result_text = tk.Text(result_window, wrap=tk.NONE, font=("Courier", 12), height=20, width=60)
+        result_text.insert(tk.END, formatted_stats)
+        result_text.pack(pady=10, expand=True, fill=tk.BOTH)
+
+        result_text.config(state=tk.DISABLED)
+
+        scrollbar = tk.Scrollbar(result_window, command=result_text.yview)
+        result_text.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
     except Exception as e:
         print(f"An error occurred during analysis: {e}")
 
 root = TkinterDnD.Tk()
 root.title("File Upload")
-root.geometry("400x200")
+root.geometry("500x400")
 
 label = tk.Label(root, text="Click below to select your file!", wraplength=300)
 label.pack(pady=20)
