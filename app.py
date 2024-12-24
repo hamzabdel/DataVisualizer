@@ -5,6 +5,7 @@ from tkinter import messagebox
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import sqlite3
 
 file_data = None
 
@@ -12,10 +13,6 @@ def on_exit():
     print("Application is closing!")
     root.destroy()
     exit()
-
-def handle_drop(event): # planning to implement drag and drop functionality on .csv files!
-    filepath = event.data.strip()
-    process_file(filepath)
 
 
 def open_file():
@@ -28,61 +25,106 @@ def open_file():
 
 
 def process_file(filepath):
-    global file_data
+    global db_connection
+    global db_cursor
+
     if not filepath.endswith('.csv'):
         print("Provide a valid CSV file.")
         return
-
+    
     try:
-        file_data = pd.read_csv(filepath)
-        print("File loaded!")
-        print(file_data.head())
+        db_connection = sqlite3.connect("data_analysis.db")
+        db_cursor = db_connection.cursor()
+
+        with open(filepath, 'r') as file:
+            df = pd.read_csv(file)
+            df.to_sql("data_table", db_connection, if_exists="replace", index=False)
+        
+        print("File loaded into SQLite database!")
+        print("Sample Data: ", df.head())
         show_graph_window(filepath)
     except Exception as e:
         print(f"An error occurred while loading the file: {e}")
 
 
 def show_graph_window(filepath):
-    global file_data
-    if file_data is None or len(file_data.columns) < 2:
-        print("CSV file does not have enough columns to plot.")
+    if not db_cursor:
+        print("No data loaded in the database.")
         return
 
-    graph_window = Toplevel(root)
-    graph_window.title(f"Graph Analysis - {filepath.split('/')[-1]}")
-    graph_window.geometry("600x500")
+    try:
+        graph_window = Toplevel(root)
+        graph_window.title(f"Graph Analysis - {filepath.split('/')[-1]}")
+        graph_window.geometry("600x500")
 
-    fig, ax = plt.subplots(figsize=(6, 4))
-    for i in range(1, len(file_data.columns)):
-        ax.plot(file_data.iloc[:, 0], file_data.iloc[:, i], marker='o', linestyle='-', label=file_data.columns[i])
+        db_cursor.execute("SELECT * FROM data_table")
+        rows = db_cursor.fetchall()
+        column_names = [description[0] for description in db_cursor.description]
 
-    ax.set_xlabel(file_data.columns[0])
-    ax.set_ylabel("Value")
-    ax.set_title("Statistical Analysis Graph")
-    ax.legend()
+        x_values = [row[0] for row in rows]
+        fig, ax = plt.subplots(figsize=(6, 4))
+        for i in range(1, len(column_names)):
+            y_values = [row[i] for row in rows]
+            ax.plot(x_values, y_values, marker='o', linestyle='-', label=column_names[i])
 
-    canvas = FigureCanvasTkAgg(fig, master=graph_window)
-    canvas.draw()
-    canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        ax.set_xlabel(column_names[0])
+        ax.set_ylabel("Value")
+        ax.set_title("Statistical Analysis Graph")
+        ax.legend()
 
-    analysis_button = tk.Button(
-        graph_window,
-        text="Statistical Analysis!",
-        command=analyze_data,
-        bg='green',
-        fg='white'
-    )
-    analysis_button.pack(pady=10)
+        canvas = FigureCanvasTkAgg(fig, master=graph_window)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+        analysis_button = tk.Button(
+            graph_window,
+            text="Statistical Analysis!",
+            command=analyze_data,
+            bg='green',
+            fg='white'
+        )
+        analysis_button.pack(pady=10)
+
+    except Exception as e:
+        print(f"An error occurred while plotting data: {e}")
 
 def analyze_data():
     try:
-        numeric_data = file_data.select_dtypes(include='number')
-        stats = numeric_data.describe()
+        db_cursor.execute("PRAGMA table_info(data_table)")
+        columns_info = db_cursor.fetchall()
 
-        formatted_stats = stats.to_string(justify="center", float_format="{:.2f}".format)
+        numeric_columns = [
+            col[1] for col in columns_info if col[2] in ("INTEGER", "REAL")
+        ]
+
+        if not numeric_columns:
+            print("No numeric columns found for analysis.")
+            return
+
+        stats = {}
+        for col in numeric_columns:
+            db_cursor.execute(
+                f"""
+                SELECT 
+                    AVG({col}) AS avg_value, 
+                    MIN({col}) AS min_value, 
+                    MAX({col}) AS max_value 
+                FROM data_table
+                """
+            )
+            result = db_cursor.fetchone()
+            stats[col] = {
+                "Average": result[0],
+                "Minimum": result[1],
+                "Maximum": result[2],
+            }
+
+        formatted_stats = "\n".join(
+            f"{col:<15} AVG: {values['Average']:.2f} MIN: {values['Minimum']} MAX: {values['Maximum']}"
+            for col, values in stats.items()
+        )
         print("Summary Statistics: ")
-        print(stats)
+        print(formatted_stats)
 
         result_window = Toplevel(root)
         result_window.title("Statistical Analysis Results")
@@ -103,15 +145,6 @@ def analyze_data():
 
     except Exception as e:
         print(f"An error occurred during analysis: {e}")
-    
-    download_button = tk.Button(
-        result_window,
-        text="Download Statistics",
-        command=download_statistics,
-        bg='green',
-        fg='white'
-    )
-    download_button.pack(pady=10)
 
 def download_statistics():
     try:
