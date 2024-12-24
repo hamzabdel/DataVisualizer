@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, Toplevel
 from tkinterdnd2 import DND_FILES, TkinterDnD
+from tkinter import messagebox
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -102,6 +103,39 @@ def analyze_data():
 
     except Exception as e:
         print(f"An error occurred during analysis: {e}")
+    
+    download_button = tk.Button(
+        result_window,
+        text="Download Statistics",
+        command=download_statistics,
+        bg='green',
+        fg='white'
+    )
+    download_button.pack(pady=10)
+
+def download_statistics():
+    try:
+        filepath = filedialog.asksaveasfilename(
+            title="Save Statistics As",
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt"), ("CSV Files", "*.csv"), ("All Files", "*.*")]
+        )
+        if not filepath:
+            return
+        
+        numeric_data = file_data.select_dtypes(include='number')
+        stats = numeric_data.describe()
+
+        if filepath.endswith('.csv'):
+            stats.to_csv(filepath, index=True)
+        else:
+            with open(filepath, 'w') as file:
+                file.write(stats.to_string(justify="center", float_format="{:.2f}".format))
+        
+        messagebox.showinfo("Success", f"Statistics successfully saved to:\n{filepath}")
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred while saving statistics:\n{e}")
+
 
 root = TkinterDnD.Tk()
 root.title("File Upload")
