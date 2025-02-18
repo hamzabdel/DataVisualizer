@@ -128,7 +128,7 @@ def analyze_data():
 
         result_window = Toplevel(root)
         result_window.title("Statistical Analysis Results")
-        result_window.geometry("500x400")
+        result_window.geometry("1000x800")
 
         result_label = tk.Label(result_window, text="Descriptive Statistics:", font=("Arial", 16, "bold"))
         result_label.pack(pady=10)
@@ -181,13 +181,11 @@ button_file = tk.Button(
     root,
     text="Choose File",
     command=open_file,
-    bg='blue',
+    bg='darkblue',
     fg='white'
 )
 button_file.pack(expand=True, pady=10)
 
-root.drop_target_register(DND_FILES)
-root.dnd_bind('<<Drop>>', handle_drop)
 
 root.protocol("WM_DELETE_WINDOW", on_exit)
 root.mainloop()
