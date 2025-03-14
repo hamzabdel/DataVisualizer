@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, Toplevel
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from tkinter import messagebox
-import pandas as pd
+import pandas as pd #pandas functions TMRW
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import sqlite3
