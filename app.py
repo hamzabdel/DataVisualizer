@@ -88,6 +88,8 @@ def show_graph_window(filepath):
     except Exception as e:
         print(f"An error occurred while plotting data: {e}")
 
+#def show_table_window(filepath):
+
 def analyze_data():
     try:
         db_cursor.execute("PRAGMA table_info(data_table)")
